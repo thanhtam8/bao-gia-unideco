@@ -33,13 +33,300 @@ let quoteUnlocked = false;
 
 /* ======= UTILS ======= */
 function fmtM(v){ return v.toLocaleString('vi-VN')+' đ'; }
+/* ======= UTILS ======= */
+function fmtM(v){ return v.toLocaleString('vi-VN')+' đ'; }
+
+let lastNumFloors = -1;
+
+function onBasementToggle(){
+  const hasBasement = document.getElementById('has-basement').checked;
+  const details = document.getElementById('basement-details');
+  if (details) {
+    if (hasBasement) details.classList.remove('hidden');
+    else details.classList.add('hidden');
+  }
+  onDimChange();
+}
+
+function onMezzanineToggle(){
+  const hasMezzanine = document.getElementById('has-mezzanine').checked;
+  const details = document.getElementById('mezzanine-details');
+  if (details) {
+    if (hasMezzanine) details.classList.remove('hidden');
+    else details.classList.add('hidden');
+  }
+  onDimChange();
+}
+
+function onTerraceToggle(){
+  const hasTerrace = document.getElementById('has-terrace')?.checked;
+  const details = document.getElementById('terrace-details-nested');
+  if (details) {
+    if (hasTerrace) details.classList.remove('hidden');
+    else details.classList.add('hidden');
+  }
+  onDimChange();
+}
+
+function generateFloorInputs() {
+  const n = parseInt(document.getElementById('so-tang').value) || 0;
+  if (n === lastNumFloors) return; // Prevent focus reset if floor count is same
+  lastNumFloors = n;
+
+  const container = document.getElementById('floors-input-container');
+  if (!container) return;
+
+  // Save current input values before rendering to prevent data loss
+  const oldVals = {};
+  container.querySelectorAll('input[type="number"]').forEach(inp => {
+    oldVals[inp.id] = inp.value;
+  });
+  const oldTerraceChecked = document.getElementById('has-terrace')?.checked;
+  const oldTumVal = document.getElementById('dt-tum')?.value;
+
+  if (n <= 0) {
+    container.innerHTML = '';
+    return;
+  }
+
+  let html = '<div class="floor-grid">';
+  
+  // Ground floor input
+  html += `
+    <div class="floor-row-compact">
+      <span class="floor-label-compact">Sàn trệt <span class="req">*</span></span>
+      <div class="input-group floor-input-group">
+        <input id="dt-floor-tret" class="form-input compact-input" type="number" min="1" placeholder="100" style="padding: 4px 8px; height: 32px; font-size: 0.85rem;" oninput="onDimChange()"/>
+        <span class="input-unit" style="padding: 0 6px; font-size: 0.75rem;">m²</span>
+      </div>
+    </div>
+  `;
+
+  // Upper floors
+  if (n >= 2) {
+    for (let i = 1; i <= n - 2; i++) {
+      html += `
+        <div class="floor-row-compact">
+          <span class="floor-label-compact">Lầu ${i} <span class="req">*</span></span>
+          <div class="input-group floor-input-group">
+            <input id="dt-floor-lau-${i}" class="form-input compact-input" type="number" min="1" placeholder="100" style="padding: 4px 8px; height: 32px; font-size: 0.85rem;" oninput="onDimChange()"/>
+            <span class="input-unit" style="padding: 0 6px; font-size: 0.75rem;">m²</span>
+          </div>
+        </div>
+      `;
+    }
+
+    // Top floor (full width in grid)
+    const topFloorLabel = `Lầu ${n - 1} (Tầng thượng)`;
+    html += `
+      <div class="floor-row-compact" style="grid-column: 1 / -1; display: flex; flex-direction: column; align-items: stretch; gap: 8px;">
+        <div style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
+          <span class="floor-label-compact" style="font-weight: 700;">${topFloorLabel} <span class="req">*</span></span>
+          <div style="display: flex; align-items: center; gap: 15px;">
+            <label class="floor-checkbox-wrap" style="margin-bottom: 0;">
+              <input type="checkbox" id="has-terrace" onchange="onTerraceToggle()"/>
+              <span>Có sân thượng</span>
+            </label>
+            <div class="input-group floor-input-group">
+              <input id="dt-floor-thuong" class="form-input compact-input" type="number" min="1" placeholder="100" style="padding: 4px 8px; height: 32px; font-size: 0.85rem;" oninput="onDimChange()"/>
+              <span class="input-unit" style="padding: 0 6px; font-size: 0.75rem;">m²</span>
+            </div>
+          </div>
+        </div>
+        
+        <div id="terrace-details-nested" class="hidden" style="padding: 8px 12px; background: var(--c-surface); border: 1px solid var(--c-border); border-radius: var(--radius-sm); margin-top: 4px;">
+          <div style="display: flex; align-items: center; justify-content: space-between; gap: 10px;">
+            <span style="font-size: 0.8rem; color: var(--c-muted);">Diện tích sàn Tum:</span>
+            <div class="input-group" style="width: 100px; display: inline-flex;">
+              <input id="dt-tum" class="form-input compact-input" type="number" min="0" placeholder="30" style="padding: 4px 8px; height: 28px; font-size: 0.8rem;" oninput="onDimChange()"/>
+              <span class="input-unit" style="padding: 0 6px; font-size: 0.7rem;">m²</span>
+            </div>
+          </div>
+          <span style="font-size: 0.75rem; color: var(--c-muted); display: block; margin-top: 4px; line-height: 1.3;">Sân thượng = Tầng thượng - Tum (tính hệ số 65% theo điều chỉnh)</span>
+        </div>
+      </div>
+    `;
+  }
+
+  html += '</div>';
+  container.innerHTML = html;
+
+  // Restore values
+  Object.keys(oldVals).forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = oldVals[id];
+  });
+  if (n >= 2) {
+    const terraceCb = document.getElementById('has-terrace');
+    if (terraceCb && oldTerraceChecked !== undefined) {
+      terraceCb.checked = oldTerraceChecked;
+      const details = document.getElementById('terrace-details-nested');
+      if (details) {
+        if (oldTerraceChecked) details.classList.remove('hidden');
+        else details.classList.add('hidden');
+      }
+    }
+    const tumInp = document.getElementById('dt-tum');
+    if (tumInp && oldTumVal !== undefined) {
+      tumInp.value = oldTumVal;
+    }
+  }
+}
+
 function getS(){
-  const As=parseFloat(document.getElementById('dt-san').value)||0;
-  const n=parseInt(document.getElementById('so-tang').value)||0;
-  const km=parseFloat(document.getElementById('loai-mong').value)||0;
-  const kr=parseFloat(document.getElementById('loai-mai').value)||0;
-  const St=As*n; const Sm=As*km; const Sr=As*kr;
-  return {As,n,km,kr,St,Sm,Sr,S:St+Sm+Sr};
+  const n = parseInt(document.getElementById('so-tang').value)||0;
+  const km = parseFloat(document.getElementById('loai-mong').value)||0;
+  const kr = parseFloat(document.getElementById('loai-mai').value)||0;
+
+  if (n <= 0) {
+    return { n, km, kr, As: 0, S: 0, dtSD: 0, details: [] };
+  }
+
+  // 1. Diện tích sàn trệt
+  let dtTret = parseFloat(document.getElementById('dt-floor-tret')?.value) || 0;
+  if (dtTret < 10 && dtTret > 0) {
+    dtTret = 10;
+  }
+
+  // 2. Móng (Foundation)
+  let S_mong = 0;
+  let km_final = km;
+  if (km > 0 && dtTret > 0) {
+    const hasBasement = document.getElementById('has-basement')?.checked;
+    const concreteSlab = document.getElementById('concrete-slab')?.checked;
+    
+    // Unideco keeps its base coefficient km. 
+    // Add 10% (feedback) if concreteSlab is checked and no basement.
+    if (concreteSlab && !hasBasement) {
+      km_final = km + 0.10;
+    }
+    S_mong = dtTret * km_final;
+  }
+
+  // 3. Tầng hầm (Basement)
+  let S_ham = 0;
+  let dtHam = 0;
+  let depthCoef = 1.5;
+  const hasBasement = document.getElementById('has-basement')?.checked;
+  if (hasBasement) {
+    dtHam = parseFloat(document.getElementById('dt-ham')?.value) || 0;
+    if (dtHam > dtTret) {
+      dtHam = dtTret;
+    }
+    const depthEl = document.getElementById('depth-ham-select');
+    depthCoef = depthEl ? parseFloat(depthEl.value) : 1.5;
+    S_ham = dtHam * depthCoef;
+  }
+
+  // 4. Tầng lửng (Mezzanine)
+  let S_lung = 0;
+  let dtLung = 0;
+  let dtVoid = 0;
+  let hsVoid = 1.0;
+  const hasMezzanine = document.getElementById('has-mezzanine')?.checked;
+  if (hasMezzanine) {
+    dtLung = parseFloat(document.getElementById('dt-lung')?.value) || 0;
+    if (dtLung >= dtTret) {
+      dtLung = dtTret * 0.6;
+    }
+    dtVoid = dtTret - dtLung;
+    if (dtVoid >= 8) {
+      hsVoid = 0.8; // User comment: 80% if void >= 8m2
+    } else {
+      hsVoid = 1.0;
+    }
+    S_lung = dtLung * 1.0 + dtVoid * hsVoid;
+  }
+
+  // 5. Các lầu & Tum/Sân thượng
+  let S_floors = 0;
+  let dtLauArray = [];
+  let dtThuong = 0;
+  let dtTum = 0;
+  let dtST = 0;
+  let hasTerrace = false;
+
+  if (n >= 2) {
+    for (let i = 1; i <= n - 2; i++) {
+      let val = parseFloat(document.getElementById(`dt-floor-lau-${i}`)?.value) || 0;
+      dtLauArray.push(val);
+      S_floors += val;
+    }
+
+    dtThuong = parseFloat(document.getElementById('dt-floor-thuong')?.value) || 0;
+    hasTerrace = document.getElementById('has-terrace')?.checked;
+
+    if (hasTerrace) {
+      dtTum = parseFloat(document.getElementById('dt-tum')?.value) || 0;
+      if (dtTum > dtThuong) {
+        dtTum = dtThuong * 0.4;
+      }
+      dtST = dtThuong - dtTum;
+      S_floors += dtTum * 1.0 + dtST * 0.65; // User comment: 65% for terrace
+    } else {
+      S_floors += dtThuong * 1.0;
+    }
+  }
+
+  // 6. Mái (Roof)
+  let S_mai = 0;
+  if (kr > 0) {
+    let apmai = dtTret;
+    if (n >= 2) {
+      apmai = hasTerrace ? dtTum : dtThuong;
+    }
+    S_mai = apmai * kr;
+  }
+
+  // Total S
+  const S = S_mong + S_ham + dtTret + S_lung + S_floors + S_mai;
+
+  // Breakdown details for UI
+  const details = [];
+  if (km > 0 && dtTret > 0) {
+    details.push({ label: `Móng (${(km_final * 100).toFixed(0)}%)`, value: S_mong });
+  }
+  if (hasBasement && dtHam > 0) {
+    details.push({ label: `Tầng hầm (×${depthCoef.toFixed(2)})`, value: S_ham });
+  }
+  if (dtTret > 0) {
+    details.push({ label: "Tầng trệt (100%)", value: dtTret });
+  }
+  if (hasMezzanine && dtLung > 0) {
+    details.push({ label: `Tầng lửng (Kín: ${dtLung}m², Trống: ${dtVoid}m² ×${(hsVoid*100).toFixed(0)}%)`, value: S_lung });
+  }
+  for (let i = 0; i < dtLauArray.length; i++) {
+    if (dtLauArray[i] > 0) {
+      details.push({ label: `Lầu ${i + 1} (100%)`, value: dtLauArray[i] });
+    }
+  }
+  if (n >= 2) {
+    if (hasTerrace) {
+      if (dtTum > 0) details.push({ label: `Tum thang (100%)`, value: dtTum });
+      if (dtST > 0) details.push({ label: `Sân thượng (65%)`, value: dtST * 0.65 });
+    } else if (dtThuong > 0) {
+      details.push({ label: `Tầng thượng (Lầu ${n - 1}) (100%)`, value: dtThuong });
+    }
+  }
+  if (kr > 0 && S_mai > 0) {
+    let roofLabel = "Mái";
+    if (kr === 0.55) roofLabel = "Mái BTCT (55%)";
+    else if (kr === 1.0) roofLabel = "Mái ngói + BTCT xiên (100%)";
+    else if (kr === 0.35) roofLabel = "Mái tôn + máng xối (35%)";
+    else if (kr === 0.2) roofLabel = "Mái tôn chống nóng (20%)";
+    details.push({ label: roofLabel, value: S_mai });
+  }
+
+  // Closed/usable floor area for completion pricing
+  const dtSD = dtTret + (hasMezzanine ? dtLung : 0) + dtLauArray.reduce((a,b)=>a+b, 0) + (hasTerrace ? dtTum : dtThuong);
+
+  return {
+    n, km, kr, As: dtTret, dtTret, dtHam, depthCoef,
+    hasMezzanine, dtLung, dtVoid, hsVoid,
+    dtLauArray, dtThuong, hasTerrace, dtTum, dtST,
+    S_mong, S_ham, S_lung, S_floors, S_mai,
+    S, details, dtSD
+  };
 }
 function getCT(){ const el=document.querySelector('input[name="loai_ct"]:checked'); return el?el.value:null; }
 
@@ -124,9 +411,11 @@ function updateMongOptions(n){
 /* ======= AUTO SWITCH CT (Nhà Phố → Nhà Dịch Vụ) ======= */
 function checkCTAutoSwitch(){
   const ct = getCT();
-  const As = parseFloat(document.getElementById('dt-san').value)||0;
   const n  = parseInt(document.getElementById('so-tang').value)||0;
-  const St = As*n;
+  const dtTret = parseFloat(document.getElementById('dt-floor-tret')?.value) || 0;
+  
+  const q = getS();
+  const St = q.dtSD || (dtTret * n);
   const notice = document.getElementById('ct-switch-notice');
 
   if(ct === 'nha-pho' && n >= 4 && St >= 400){
@@ -168,30 +457,40 @@ function onCTChange(){
 /* ======= DIM CHANGE ======= */
 function onDimChange(){
   const n  = parseInt(document.getElementById('so-tang').value)||0;
-  const As = parseFloat(document.getElementById('dt-san').value)||0;
 
-  // 1. Cập nhật hệ số móng động
+  // 1. Sinh các input diện tích động nếu cần
+  generateFloorInputs();
+
+  // 2. Cập nhật hệ số móng động
   updateMongOptions(n);
 
-  // 2. Kiểm tra tự động chuyển loại công trình
+  // 3. Kiểm tra tự động chuyển loại công trình
   const switched = checkCTAutoSwitch();
   if(switched){ refreshPrices(); }
 
-  const {As:_As,n:_n,km,kr,St,Sm,Sr,S}=getS();
-  const box=document.getElementById('calc-box');
-  if(_As>0&&_n>0){
-    box.classList.remove('calc-hidden');
-    document.getElementById('err-dim').classList.add('hidden');
-    document.getElementById('r-st').textContent=St.toLocaleString('vi-VN')+' m²';
-    const rowM=document.getElementById('r-row-m');
-    const rowR=document.getElementById('r-row-r');
-    if(km>0){rowM.style.display='flex';document.getElementById('r-sm').textContent=Sm.toLocaleString('vi-VN')+' m²';}
-    else{rowM.style.display='none';}
-    if(kr>0){rowR.style.display='flex';document.getElementById('r-sr').textContent=Sr.toLocaleString('vi-VN')+' m²';}
-    else{rowR.style.display='none';}
-    document.getElementById('r-total').textContent=S.toLocaleString('vi-VN')+' m²';
+  const q = getS();
+  const box = document.getElementById('calc-box');
+  const err = document.getElementById('err-dim');
+
+  if(q.dtTret > 0 && q.n > 0){
+    if(box) box.classList.remove('calc-hidden');
+    if(err) err.classList.add('hidden');
+    
+    // In các dòng chi tiết
+    const rowsContainer = document.getElementById('calc-details-rows');
+    if(rowsContainer){
+      rowsContainer.innerHTML = q.details.map(d => `
+        <div class="calc-row" style="display: flex; justify-content: space-between; margin-bottom: 4px; font-size: 0.9rem;">
+          <span>${d.label}</span>
+          <span>${d.value.toLocaleString('vi-VN')} m²</span>
+        </div>
+      `).join('');
+    }
+    
+    const totalEl = document.getElementById('r-total');
+    if(totalEl) totalEl.textContent = q.S.toLocaleString('vi-VN') + ' m²';
   } else {
-    box.classList.add('calc-hidden');
+    if(box) box.classList.add('calc-hidden');
   }
   refreshPrices();
   updateSummary();
@@ -200,22 +499,35 @@ function onDimChange(){
 /* ======= REFRESH PRICES ON PILLS ======= */
 function refreshPrices(){
   const ct=getCT(); if(!ct) return;
-  const {As,n}=getS(); const dtSD=As*n;
+  const q=getS();
+  const dtSD=q.dtSD || 0;
+  const As=q.dtTret || 0;
   const tk=PRICING.thietke[ct]||{};
-  document.getElementById('px-tk-kt').textContent=tk.kientruc?fmtM(tk.kientruc)+'/m²':'—';
-  document.getElementById('px-tk-nt').textContent=tk.noithat?fmtM(tk.noithat)+'/m²':'—';
-  document.getElementById('px-tk-tgtc').textContent=tk.tc?fmtM(tk.tc)+'/m²':'—';
-  document.getElementById('px-tk-tgnc').textContent=tk.nc?fmtM(tk.nc)+'/m²':'—';
+  
+  const elKt = document.getElementById('px-tk-kt');
+  const elNt = document.getElementById('px-tk-nt');
+  const elTgtc = document.getElementById('px-tk-tgtc');
+  const elTgnc = document.getElementById('px-tk-tgnc');
+  if(elKt) elKt.textContent=tk.kientruc?fmtM(tk.kientruc)+'/m²':'—';
+  if(elNt) elNt.textContent=tk.noithat?fmtM(tk.noithat)+'/m²':'—';
+  if(elTgtc) elTgtc.textContent=tk.tc?fmtM(tk.tc)+'/m²':'—';
+  if(elTgnc) elTgnc.textContent=tk.nc?fmtM(tk.nc)+'/m²':'—';
+  
   const tho=PRICING.tho[ct];
+  const elThoSingle = document.getElementById('tho-single');
+  const elThoMulti = document.getElementById('tho-multi');
   if(ct==='dich-vu'){
-    document.getElementById('tho-single').style.display='none';
-    document.getElementById('tho-multi').style.display='flex';
-    document.getElementById('px-tho-tc').textContent=fmtM(tho.tc)+'/m²';
-    document.getElementById('px-tho-nc').textContent=fmtM(tho.nc)+'/m²';
+    if(elThoSingle) elThoSingle.style.display='none';
+    if(elThoMulti) elThoMulti.style.display='flex';
+    const elThoTc = document.getElementById('px-tho-tc');
+    const elThoNc = document.getElementById('px-tho-nc');
+    if(elThoTc) elThoTc.textContent=fmtM(tho.tc)+'/m²';
+    if(elThoNc) elThoNc.textContent=fmtM(tho.nc)+'/m²';
   } else {
-    document.getElementById('tho-single').style.display='flex';
-    document.getElementById('tho-multi').style.display='none';
-    document.getElementById('px-tho-single').textContent=fmtM(tho.single)+'/m²';
+    if(elThoSingle) elThoSingle.style.display='flex';
+    if(elThoMulti) elThoMulti.style.display='none';
+    const elThoSinglePx = document.getElementById('px-tho-single');
+    if(elThoSinglePx) elThoSinglePx.textContent=fmtM(tho.single)+'/m²';
   }
   const ht=PRICING.hoanThien[ct];
   let htRange=null;
@@ -224,11 +536,21 @@ function refreshPrices(){
     for(const r of sorted){if(dtSD>=r.min){htRange=r;break;}}
     if(!htRange&&sorted.length) htRange=sorted[sorted.length-1];
   }
-  document.getElementById('px-ht-tc').textContent=htRange?fmtM(htRange.tc)+'/m²':'—';
-  document.getElementById('px-ht-nc').textContent=htRange?fmtM(htRange.nc)+'/m²':'—';
+  const elHtTc = document.getElementById('px-ht-tc');
+  const elHtNc = document.getElementById('px-ht-nc');
+  if(elHtTc) elHtTc.textContent=htRange?fmtM(htRange.tc)+'/m²':'—';
+  if(elHtNc) elHtNc.textContent=htRange?fmtM(htRange.nc)+'/m²':'—';
   const btPill=document.getElementById('pill-ht-bt');
-  if(ht&&ht.bt){btPill.style.display='flex';document.getElementById('px-ht-bt').textContent=fmtM(ht.bt)+'/m²';}
-  else{btPill.style.display='none';}
+  if(ht&&ht.bt){
+    if(btPill) {
+      btPill.style.display='flex';
+      const elHtBt = document.getElementById('px-ht-bt');
+      if(elHtBt) elHtBt.textContent=fmtM(ht.bt)+'/m²';
+    }
+  }
+  else{
+    if(btPill) btPill.style.display='none';
+  }
 }
 
 /* ======= TOGGLE BLOCK ======= */
@@ -257,8 +579,11 @@ function pickPill(btn){
 /* ======= COMPUTE QUOTE ======= */
 function computeQuote(){
   const ct=getCT();
-  const {As,n,S}=getS();
-  const dtSD=As*n;
+  const q=getS();
+  const As=q.dtTret;
+  const n=q.n;
+  const S=q.S;
+  const dtSD=q.dtSD;
   const ctNames={'nha-vuon':'Nhà Vườn','nha-pho':'Nhà Phố ≤ 3 tầng','dich-vu':'Nhà Dịch Vụ ≥ 4 tầng','biet-thu':'Biệt Thự'};
   const optNamesTK={'kien-truc':'Kiến Trúc','noi-that':'Nội Thất','trong-goi-tc':'Trọn Gói Tiêu Chuẩn','trong-goi-nc':'Trọn Gói Nâng Cao'};
   const lines=[];
@@ -268,16 +593,16 @@ function computeQuote(){
     const tk=PRICING.thietke[ct]||{};
     const priceMap={'kien-truc':tk.kientruc,'noi-that':tk.noithat,'trong-goi-tc':tk.tc,'trong-goi-nc':tk.nc};
     const p=priceMap[picked.tk]||0; const total=p*As; grand+=total;
-    lines.push({name:'Thiết Kế – '+optNamesTK[picked.tk],unit:fmtM(p)+'/m²',qty:As.toLocaleString('vi-VN')+' m² As',total:fmtM(total)});
+    lines.push({name:'Thiết Kế – '+optNamesTK[picked.tk],unit:fmtM(p)+'/m²',qty:As.toLocaleString('vi-VN')+' m² sàn trệt',total:fmtM(total)});
   }
   if(blockOn.tho&&ct){
     const tho=PRICING.tho[ct];
     if(ct!=='dich-vu'){
       const p=tho.single||0;const total=p*S;grand+=total;
-      lines.push({name:'Phần Thô',unit:fmtM(p)+'/m²',qty:S.toLocaleString('vi-VN')+' m² S',total:fmtM(total)});
+      lines.push({name:'Phần Thô',unit:fmtM(p)+'/m²',qty:S.toLocaleString('vi-VN')+' m² xây dựng',total:fmtM(total)});
     } else if(picked.tho){
       const p=tho[picked.tho]||0;const total=p*S;grand+=total;
-      lines.push({name:'Phần Thô – '+(picked.tho==='tc'?'Tiêu Chuẩn':'Nâng Cao'),unit:fmtM(p)+'/m²',qty:S.toLocaleString('vi-VN')+' m² S',total:fmtM(total)});
+      lines.push({name:'Phần Thô – '+(picked.tho==='tc'?'Tiêu Chuẩn':'Nâng Cao'),unit:fmtM(p)+'/m²',qty:S.toLocaleString('vi-VN')+' m² xây dựng',total:fmtM(total)});
     }
   }
   if(blockOn.ht&&picked.ht&&ct){
@@ -290,7 +615,7 @@ function computeQuote(){
     }
     const total=p*dtSD;grand+=total;
     const htNames={'tc':'Tiêu Chuẩn','nc':'Nâng Cao','bt':'Biệt Thự'};
-    lines.push({name:'Hoàn Thiện – '+htNames[picked.ht],unit:fmtM(p)+'/m²',qty:dtSD.toLocaleString('vi-VN')+' m² sàn',total:fmtM(total)});
+    lines.push({name:'Hoàn Thiện – '+htNames[picked.ht],unit:fmtM(p)+'/m²',qty:dtSD.toLocaleString('vi-VN')+' m² sàn sử dụng',total:fmtM(total)});
   }
   return {ct,ctName:ctNames[ct]||ct,As,n,S,dtSD,lines,grand};
 }
@@ -379,8 +704,9 @@ function updateSummary(){
   else{if(summaryCard)summaryCard.style.display='block';}
 
   const ct=getCT();
-  const {As,n,S}=getS();
-  const dtSD=As*n;
+  const q_temp=getS();
+  const As=q_temp.As;
+  const n=q_temp.n;
   const hoten=document.getElementById('hoten').value.trim();
   const sdt=document.getElementById('sdt').value.trim();
   const email=(document.getElementById('email')||{}).value||'';
@@ -390,6 +716,8 @@ function updateSummary(){
     return;
   }
   const q=computeQuote();
+  const S=q.S;
+  const dtSD=q.dtSD;
   const ctNames={'nha-vuon':'Nhà Vườn','nha-pho':'Nhà Phố ≤ 3 tầng','dich-vu':'Nhà Dịch Vụ ≥ 4 tầng','biet-thu':'Biệt Thự'};
   let html='';
   if(hoten||sdt||email.trim()){
@@ -401,10 +729,10 @@ function updateSummary(){
   }
   html+='<div class="sum-section"><div class="sum-section-title">Thông số</div>';
   html+=row('Loại công trình',ctNames[ct]||ct);
-  html+=row('Diện tích sàn (As)',As.toLocaleString('vi-VN')+' m²');
+  html+=row('Diện tích sàn trệt (As)',As.toLocaleString('vi-VN')+' m²');
   html+=row('Số tầng (n)',n+' tầng');
   html+=row('Tổng DT xây dựng (S)',S.toLocaleString('vi-VN')+' m²');
-  html+=row('DT sàn sử dụng (As×n)',dtSD.toLocaleString('vi-VN')+' m²');
+  html+=row('DT sàn sử dụng',dtSD.toLocaleString('vi-VN')+' m²');
   html+='</div>';
   html+='<hr class="sum-divider"><div class="sum-section"><div class="sum-section-title">Dịch vụ chọn</div>';
 
@@ -413,14 +741,14 @@ function updateSummary(){
     const optNames={'kien-truc':'Kiến trúc','noi-that':'Nội thất','trong-goi-tc':'Trọn gói TC','trong-goi-nc':'Trọn gói NC'};
     const priceMap={'kien-truc':tk.kientruc,'noi-that':tk.noithat,'trong-goi-tc':tk.tc,'trong-goi-nc':tk.nc};
     const p=priceMap[picked.tk]||0;const total=p*As;
-    html+=svcRow('🎨 Thiết kế – '+optNames[picked.tk],p,As,'m² As',total);
+    html+=svcRow('🎨 Thiết kế – '+optNames[picked.tk],p,As,'m² sàn trệt',total);
   } else if(!blockOn.tk){html+='<div class="sum-row-empty">Thiết kế: <em>đang tắt</em></div>';}
   else{html+='<div class="sum-row-empty">Thiết kế: <em>chưa chọn phương án</em></div>';}
 
   if(blockOn.tho){
     const tho=PRICING.tho[ct];
-    if(ct!=='dich-vu'){const p=tho.single||0;const total=p*S;html+=svcRow('🏗️ Phần thô',p,S,'m² S',total);}
-    else if(picked.tho){const p=tho[picked.tho]||0;const total=p*S;html+=svcRow('🏗️ Phần thô – '+(picked.tho==='tc'?'Tiêu chuẩn':'Nâng cao'),p,S,'m² S',total);}
+    if(ct!=='dich-vu'){const p=tho.single||0;const total=p*S;html+=svcRow('🏗️ Phần thô',p,S,'m² xây dựng',total);}
+    else if(picked.tho){const p=tho[picked.tho]||0;const total=p*S;html+=svcRow('🏗️ Phần thô – '+(picked.tho==='tc'?'Tiêu chuẩn':'Nâng cao'),p,S,'m² xây dựng',total);}
     else{html+='<div class="sum-row-empty">Phần thô: <em>chưa chọn phương án</em></div>';}
   } else{html+='<div class="sum-row-empty">Phần thô: <em>đang tắt</em></div>';}
 
@@ -430,7 +758,7 @@ function updateSummary(){
     else{const sorted=[...htData.ranges].sort((a,b)=>b.min-a.min);let r=null;for(const x of sorted){if(dtSD>=x.min){r=x;break;}}if(!r&&sorted.length)r=sorted[sorted.length-1];p=r?r[picked.ht]||0:0;}
     const total=p*dtSD;
     const htNames={'tc':'Tiêu chuẩn','nc':'Nâng cao','bt':'Biệt thự'};
-    html+=svcRow('✨ Hoàn thiện – '+htNames[picked.ht],p,dtSD,'m² sàn',total);
+    html+=svcRow('✨ Hoàn thiện – '+htNames[picked.ht],p,dtSD,'m² sàn sử dụng',total);
   } else if(!blockOn.ht){html+='<div class="sum-row-empty">Hoàn thiện: <em>đang tắt</em></div>';}
   else{html+='<div class="sum-row-empty">Hoàn thiện: <em>chưa chọn phương án</em></div>';}
 

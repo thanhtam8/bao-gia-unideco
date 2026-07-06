@@ -130,23 +130,69 @@
           </div>
         </div>
         <div class="card-body">
-          <div class="form-row">
-            <div class="form-group">
-              <label class="form-label" for="dt-san">Diện tích sàn (As) <span class="req">*</span></label>
-              <div class="input-group">
-                <input id="dt-san" class="form-input" type="number" min="0" placeholder="100" oninput="onDimChange()"/>
-                <span class="input-unit">m²</span>
-              </div>
-              <span class="form-hint">As là diện tích sàn điển hình của một tầng</span>
-            </div>
-            <div class="form-group">
+          <div class="form-row" style="align-items: center; margin-bottom: 0.5rem;">
+            <div class="form-group" style="margin-bottom: 0;">
               <label class="form-label" for="so-tang">Số tầng (n) <span class="req">*</span></label>
               <div class="input-group">
                 <input id="so-tang" class="form-input" type="number" min="1" placeholder="3" oninput="onDimChange()"/>
                 <span class="input-unit">tầng</span>
               </div>
             </div>
+            <div class="form-group" style="display: flex; align-items: flex-end; gap: 15px; margin-bottom: 0; padding-bottom: 6px;">
+              <label class="form-checkbox-label" style="display: flex; align-items: center; gap: 6px; cursor: pointer; font-size: 0.9rem;">
+                <input type="checkbox" id="concrete-slab" onchange="onDimChange()"/>
+                <span>Đổ bê tông nền trệt (+10%)</span>
+              </label>
+            </div>
           </div>
+
+          <!-- COMPACT OPTIONS BLOCK (HAM & LUNG) -->
+          <div class="compact-options" style="display: flex; flex-direction: column; gap: 10px; margin-top: 0.75rem; background: var(--c-surface2); padding: 12px; border: 1px solid var(--c-border); border-radius: var(--radius-md);">
+            <!-- Basement row -->
+            <div style="display: flex; flex-wrap: wrap; gap: 15px; align-items: center;">
+              <label class="form-checkbox-label" style="display: flex; align-items: center; gap: 6px; cursor: pointer; font-size: 0.9rem; margin-bottom: 0;">
+                <input type="checkbox" id="has-basement" onchange="onBasementToggle()"/>
+                <span style="font-weight: 600;">Có tầng hầm</span>
+              </label>
+              
+              <div id="basement-details" class="hidden" style="display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                <span style="font-size: 0.85rem; color: var(--c-muted);">DT hầm:</span>
+                <div class="input-group" style="width: 100px;">
+                  <input id="dt-ham" class="form-input compact-input" type="number" min="0" placeholder="80" style="padding: 4px 8px; height: 32px; font-size: 0.85rem;" oninput="onDimChange()"/>
+                  <span class="input-unit" style="padding: 0 6px; font-size: 0.75rem;">m²</span>
+                </div>
+                <span style="font-size: 0.85rem; color: var(--c-muted); margin-left: 5px;">Độ sâu:</span>
+                <select id="depth-ham-select" class="form-select compact-select" style="padding: 4px 8px; height: 32px; font-size: 0.85rem; width: 170px;" onchange="onDimChange()">
+                  <option value="1.5">Sâu &lt; 1.2m (×1.50)</option>
+                  <option value="1.7">Sâu 1.2m - 1.8m (×1.70)</option>
+                  <option value="2.0">Sâu &gt; 1.8m (×2.00)</option>
+                </select>
+              </div>
+            </div>
+            
+            <!-- Mezzanine row -->
+            <div style="display: flex; flex-wrap: wrap; gap: 15px; align-items: center; border-top: 1px solid var(--c-border); padding-top: 10px; margin-top: 2px;">
+              <label class="form-checkbox-label" style="display: flex; align-items: center; gap: 6px; cursor: pointer; font-size: 0.9rem; margin-bottom: 0;">
+                <input type="checkbox" id="has-mezzanine" onchange="onMezzanineToggle()"/>
+                <span style="font-weight: 600;">Có tầng lửng</span>
+              </label>
+              
+              <div id="mezzanine-details" class="hidden" style="display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                <span style="font-size: 0.85rem; color: var(--c-muted);">DT lửng kín:</span>
+                <div class="input-group" style="width: 100px;">
+                  <input id="dt-lung" class="form-input compact-input" type="number" min="0" placeholder="50" style="padding: 4px 8px; height: 32px; font-size: 0.85rem;" oninput="onDimChange()"/>
+                  <span class="input-unit" style="padding: 0 6px; font-size: 0.75rem;">m²</span>
+                </div>
+                <span style="font-size: 0.75rem; color: var(--c-muted); margin-left: 5px;">(Thông tầng lửng &ge; 8 m² tính 80%, &lt; 8 m² tính 100%)</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- DYNAMIC FLOORS CONTAINER -->
+          <div id="floors-input-container" style="margin-top: 1rem;">
+            <!-- Dynamic input rows will be generated here -->
+          </div>
+
           <div class="form-row" style="margin-top:1.1rem">
             <div class="form-group">
               <label class="form-label" for="loai-mong">Loại móng (k<sub>m</sub>)</label>
@@ -164,20 +210,24 @@
               <select id="loai-mai" class="form-select" onchange="onDimChange()">
                 <option value="0">Không tính mái (+0)</option>
                 <option value="0.55">Mái BTCT (×0.55)</option>
-                <option value="1">Mái ngói + BTCT xiên (×1)</option>
+                <option value="1">Mái ngói + BTCT xiên (×1.00)</option>
                 <option value="0.35">Mái tôn + máng xối (×0.35)</option>
-                <option value="0.2">Mái tôn chống nóng + máng xối (×0.2)</option>
+                <option value="0.2">Mái tôn chống nóng + máng xối (×0.20)</option>
               </select>
             </div>
           </div>
-          <div id="calc-box" class="calc-box calc-hidden">
-            <div class="calc-box-title">📊 Tổng diện tích xây dựng</div>
-            <div class="calc-row"><span>Diện tích sàn (As × n)</span><span id="r-st">—</span></div>
-            <div class="calc-row" id="r-row-m"><span>Diện tích móng (As × k<sub>m</sub>)</span><span id="r-sm">—</span></div>
-            <div class="calc-row" id="r-row-r"><span>Diện tích mái (As × k<sub>r</sub>)</span><span id="r-sr">—</span></div>
-            <div class="calc-row total"><span>Tổng S</span><span id="r-total">—</span></div>
+
+          <!-- CALC BOX -->
+          <div id="calc-box" class="calc-box calc-hidden" style="margin-top: 1rem; padding: 12px; background: var(--c-surface3); border-radius: var(--radius-md); border: 1px solid var(--c-border);">
+            <div class="calc-box-title" style="font-weight: 700; margin-bottom: 8px;">📊 Chi tiết diện tích tính toán</div>
+            <div id="calc-details-rows">
+              <!-- Detail rows will be generated here -->
+            </div>
+            <div class="calc-row total" style="margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--c-border); display: flex; justify-content: space-between; font-weight: 800;">
+              <span>Tổng S xây dựng</span><span id="r-total">—</span>
+            </div>
           </div>
-          <div id="err-dim" class="notice hidden">⚠️ Vui lòng nhập diện tích sàn và số tầng lớn hơn 0.</div>
+          <div id="err-dim" class="notice hidden">⚠️ Vui lòng nhập số tầng và diện tích hợp lệ.</div>
         </div>
       </div>
 

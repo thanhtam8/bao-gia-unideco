@@ -696,3 +696,46 @@ body::before{
 .section-divider::before,.section-divider::after{
   content:'';flex:1;height:1px;background:var(--c-border);
 }
+
+.hidden { display: none !important; }
+
+/* ============ COMPACT FLOOR GRID ============ */
+.floor-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.floor-row-compact {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--c-surface2);
+  border: 1px solid var(--c-border);
+  border-radius: var(--radius-md);
+  padding: 8px 12px;
+  transition: border-color var(--trans);
+}
+.floor-row-compact:focus-within {
+  border-color: var(--c-border-focus);
+}
+.floor-label-compact {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--c-text);
+  flex: 1;
+  white-space: nowrap;
+}
+.floor-input-group {
+  display: flex;
+  align-items: center;
+  width: 120px;
+}
+.floor-checkbox-wrap {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.8rem;
+  color: var(--c-muted);
+  cursor: pointer;
+}
